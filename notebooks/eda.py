@@ -32,11 +32,11 @@ train_df['text_length'] = train_df['text'].apply(len)
 print(train_df['text_length'].describe())
 
 
-#sampling  reviews
-print("Sampling Positive reviews")
+#sample  review
+print("Sample Positive review")
 print(train_df[train_df['label'] == 1]['text'].iloc[0][:300])
 
-print("sampling negative reviews")
+print("Sample Negative review")
 print([train_df[train_df['label'] == 0]['text'].iloc[0][:300]])
 
 
