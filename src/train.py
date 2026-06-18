@@ -105,7 +105,9 @@ def train(
         mlflow.log_metric("accuracy", metrics["accuracy"])
 
         # ── 7. Log Model to MLflow ────────────────────────────────────
-        mlflow.sklearn.log_model(pipeline, name="model")
+        mlflow.sklearn.log_model(pipeline,
+                                name="model",
+                                registered_model_name='sentimentops-tfidf')
 
         # ── 8. Save locally too ───────────────────────────────────────
         save_model(pipeline)
