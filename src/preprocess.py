@@ -39,6 +39,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df['text_raw'] = df['text']
     df['text'] = df['text'].apply(clean_text)
+    df['text_length'] = df['text'].apply(len)
     return df
 
 def save_data(train_df: pd.DataFrame, test_df = pd.DataFrame) -> None:

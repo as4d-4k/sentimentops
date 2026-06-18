@@ -1,77 +1,117 @@
-import os, joblib, pandas as pd
+import os
+import joblib
+import mlflow
+import mlflow.sklearn
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.pipeline import Pipeline
 
-def load_data(train_path:str, test_path: str):
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+EXPERIMENT_NAME = "sentimentops-tfidf-logreg"
+MODEL_PATH      = "data/model.joblib"
+TRAIN_PATH      = "data/train.csv"
+TEST_PATH       = "data/test.csv"
+
+
+def load_data(train_path: str, test_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load preprocessed train and test CSVs."""
     train_df = pd.read_csv(train_path)
-    test_df = pd.read_csv(test_path)
+    test_df  = pd.read_csv(test_path)
     return train_df, test_df
 
-def build_pipeline():
+
+def build_pipeline(max_features: int, ngram_range: tuple, C: float) -> Pipeline:
     """
-    build sklearn pipeline with 2steps:
-    1: TF-IDF vectorizer
-    2: Logistic regression
+    Build a sklearn Pipeline.
+    Parameters are now explicit arguments so MLflow can log them.
     """
     pipeline = Pipeline([
-        ('tfidf', TfidfVectorizer(
-            max_features = 50000,
-            ngram_range=(1,2),
-            sublinear_tf = True,
+        ("tfidf", TfidfVectorizer(
+            max_features=max_features,
+            ngram_range=ngram_range,
+            sublinear_tf=True,
         )),
-        ('clf', LogisticRegression(
-            max_iter = 1000,
-            C=1.0,
-            solver = 'lbfgs',
+        ("clf", LogisticRegression(
+            max_iter=1000,
+            C=C,
+            solver="lbfgs",
         ))
     ])
     return pipeline
 
-def evaluate(pipeline: Pipeline, x_test: pd.Series, y_test: pd.Series):
-    y_pred = pipeline.predict(x_test)
 
+def evaluate(pipeline: Pipeline, X_test: pd.Series, y_test: pd.Series) -> dict:
+    """Run predictions and return metrics."""
+    y_pred = pipeline.predict(X_test)
     metrics = {
-        'accuracy': accuracy_score(y_test, y_pred),
-        'report': classification_report(y_test,y_pred, target_names=['negative','positive'])
+        "accuracy" : accuracy_score(y_test, y_pred),
+        "report"   : classification_report(
+                        y_test, y_pred,
+                        target_names=["negative", "positive"]
+                     )
     }
-    return  metrics
+    return metrics
 
-def save_model(pipeline: Pipeline, path = 'data/model.joblib'):
-    """
-    Save the pretrained model to disk
-    """
+
+def save_model(pipeline: Pipeline, path: str = MODEL_PATH) -> None:
+    """Save the trained pipeline to disk."""
     joblib.dump(pipeline, path)
-    print(f"Model Saved to -> {path}")
+    print(f"Model saved → {path}")
+
+
+def train(
+    max_features : int   = 50000,
+    ngram_range  : tuple = (1, 2),
+    C            : float = 1.0,
+) -> None:
+    """
+    Full training run wrapped in an MLflow context.
+    All params and metrics are logged automatically.
+    """
+
+    # ── 1. Setup MLflow ───────────────────────────────────────────────
+    mlflow.set_experiment(EXPERIMENT_NAME)
+
+    with mlflow.start_run():
+
+        # ── 2. Log Parameters ─────────────────────────────────────────
+        mlflow.log_param("max_features", max_features)
+        mlflow.log_param("ngram_range",  str(ngram_range))
+        mlflow.log_param("C",            C)
+
+        # ── 3. Load Data ──────────────────────────────────────────────
+        print("Loading data...")
+        train_df, test_df = load_data(TRAIN_PATH, TEST_PATH)
+
+        X_train, y_train = train_df["text"], train_df["label"]
+        X_test,  y_test  = test_df["text"],  test_df["label"]
+
+        # ── 4. Build and Train ────────────────────────────────────────
+        print("Training...")
+        pipeline = build_pipeline(max_features, ngram_range, C)
+        pipeline.fit(X_train, y_train)
+
+        # ── 5. Evaluate ───────────────────────────────────────────────
+        print("Evaluating...")
+        metrics = evaluate(pipeline, X_test, y_test)
+
+        print(f"\nAccuracy : {metrics['accuracy']:.4f}")
+        print(f"\n{metrics['report']}")
+
+        # ── 6. Log Metrics to MLflow ──────────────────────────────────
+        mlflow.log_metric("accuracy", metrics["accuracy"])
+
+        # ── 7. Log Model to MLflow ────────────────────────────────────
+        mlflow.sklearn.log_model(pipeline, name="model")
+
+        # ── 8. Save locally too ───────────────────────────────────────
+        save_model(pipeline)
+
+        print(f"\nMLflow run logged under experiment: {EXPERIMENT_NAME}")
+
 
 if __name__ == "__main__":
-    print("Loading Data...")
-    train_df, test_df = load_data("data/train.csv", "data/test.csv")
-    x_train = train_df['text']
-    y_trian = train_df['label']
-    x_test = test_df['text'] 
-    y_test = test_df['label']
-
-    print(f"train samples: {len(x_train)}")
-    print(f"test samples {len(x_test)}")
-
-    #Building Pipeline
-    print("Building pipeline")
-    pipeline = build_pipeline()
-    print("pipeline built")
-
-    #train the model
-    print("Training...")
-    pipeline.fit(x_train, y_trian)
-    print("training complete")
-
-    # Evaluating the model
-    print("evaluating the model")
-    metrics = evaluate(pipeline, x_test, y_test)
-    print(f"\nAccurace: {metrics['accuracy']: .4f}")
-    print(f"\nClassification report: {metrics['report']}")
-
-    #saving the model
-    save_model(pipeline)
-
+    train()
