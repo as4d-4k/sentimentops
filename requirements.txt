@@ -30,3 +30,7 @@ azure-mgmt-resource
 # Utilities
 python-dotenv
 joblib
+
+# Testing
+pytest
+pytest-cov
