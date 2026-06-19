@@ -6,6 +6,8 @@ from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 load_dotenv()
 
+
+
 def get_ml_client():
     """
     Authenticate and return an MLClient connected
@@ -27,7 +29,7 @@ def get_ml_client():
 
 def submit_training_job(
         max_features:int = 50000,
-        ngram:str = "1,2",
+        ngram_range:str = "1,2",
         C:float = 1.0,
 ):
     """
@@ -37,24 +39,20 @@ def submit_training_job(
     #1: Connecting to Workspace
     print("Connecting to Azure ML workspace...")
     client = get_ml_client()
+    print(f"Connected to: {client.workspace_name}")
 
-    #2: Defin ENV (what packages to install on azure)
-    env = Environment(
-        name="sentimentops-env",
-        image='mcr.microsoft.com/azureml/base:latest',
-        conda_file='azure/conda_env.yml',
-    )
-
+    train_command = (
+    "pip install datasets mlflow python-dotenv joblib huggingface-hub && "
+    "python src/train.py "
+    f"--max_features {max_features} "
+    f"--ngram_range {ngram_range} "
+    f"--C {C}"
+)
     #3: Defining the Job
     job = command(
         code= ".",
-        command=(
-            f"python src/train.py"
-            f"--max_features {max_features}"
-            f"--ngram {ngram}"
-            f"C {C}"
-        ),
-        environment= env,
+        command=train_command,
+        environment= "AzureML-sklearn-1.0-ubuntu20.04-py38-cpu@latest",
         compute= 'cpu-cluster',
         display_name='sentimentops-training',
         description= "TF-IDF + LogReg sentiment training job",

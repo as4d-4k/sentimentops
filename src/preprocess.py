@@ -5,7 +5,7 @@ load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
 
 
-def clean_text(text:str) -> str:
+def clean_text(text:str):
     """clean a single revew string.
     1: Lowercase
     2: remove html tags
@@ -19,7 +19,7 @@ def clean_text(text:str) -> str:
     text = text.strip()
     return text
 
-def load_imdb() -> tuple[pd.DataFrame,pd.DataFrame]:
+def load_imdb():
     HF_TOKEN = os.getenv('HF_TOKEN')
     """
     Load IMDB dataset from HuggingFace and return
@@ -31,7 +31,7 @@ def load_imdb() -> tuple[pd.DataFrame,pd.DataFrame]:
     return train_df, test_df
 
 
-def preprocess(df: pd.DataFrame) -> pd.DataFrame:
+def preprocess(df: pd.DataFrame):
     """
     Apply cleaning to a DF and return it
     Keeps Original text in 'text_raw' for reference
@@ -42,7 +42,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df['text_length'] = df['text'].apply(len)
     return df
 
-def save_data(train_df: pd.DataFrame, test_df = pd.DataFrame) -> None:
+def save_data(train_df: pd.DataFrame, test_df = pd.DataFrame):
     #Save preprocessed dataframes to data/ Folder as CSV
     train_df.to_csv("data/train.csv", index=False)
     test_df.to_csv("data/test.csv", index= False)

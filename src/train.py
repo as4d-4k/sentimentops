@@ -16,14 +16,14 @@ TRAIN_PATH      = "data/train.csv"
 TEST_PATH       = "data/test.csv"
 
 
-def load_data(train_path: str, test_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_data(train_path: str, test_path: str):
     """Load preprocessed train and test CSVs."""
     train_df = pd.read_csv(train_path)
     test_df  = pd.read_csv(test_path)
     return train_df, test_df
 
 
-def build_pipeline(max_features: int, ngram_range: tuple, C: float) -> Pipeline:
+def build_pipeline(max_features: int, ngram_range: tuple, C: float):
     """
     Build a sklearn Pipeline.
     Parameters are now explicit arguments so MLflow can log them.
@@ -43,7 +43,7 @@ def build_pipeline(max_features: int, ngram_range: tuple, C: float) -> Pipeline:
     return pipeline
 
 
-def evaluate(pipeline: Pipeline, X_test: pd.Series, y_test: pd.Series) -> dict:
+def evaluate(pipeline: Pipeline, X_test: pd.Series, y_test: pd.Series):
     """Run predictions and return metrics."""
     y_pred = pipeline.predict(X_test)
     metrics = {
@@ -56,7 +56,7 @@ def evaluate(pipeline: Pipeline, X_test: pd.Series, y_test: pd.Series) -> dict:
     return metrics
 
 
-def save_model(pipeline: Pipeline, path: str = MODEL_PATH) -> None:
+def save_model(pipeline: Pipeline, path: str = MODEL_PATH):
     """Save the trained pipeline to disk."""
     joblib.dump(pipeline, path)
     print(f"Model saved → {path}")
@@ -117,16 +117,27 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max_features', type=int, default=50000)
-    parser.add_argument('--ngram_range', type=str, default="1,2")
-    parser.add_argument('--C', type= float, default=1.0)
+    parser.add_argument("--max_features", type=int,   default=50000)
+    parser.add_argument("--ngram_range",  type=str,   default="1,2")
+    parser.add_argument("--C",            type=float, default=1.0)
     args = parser.parse_args()
 
-    #convert "1,2" string of ngram to tuple
-    ngram = tuple(int(x) for x in args.ngram_range.split(','))
+    ngram = tuple(int(x) for x in args.ngram_range.split(","))
+
+    # ── When running on Azure, data/ folder doesn't exist ─────────────
+    # ── So we generate it fresh from HuggingFace ──────────────────────
+    if not os.path.exists("data/train.csv"):
+        print("data/train.csv not found — downloading from HuggingFace...")
+        from src.preprocess import load_imdb, preprocess, save_data
+        os.makedirs("data", exist_ok=True)
+        train_df, test_df = load_imdb()
+        train_df = preprocess(train_df)
+        test_df  = preprocess(test_df)
+        save_data(train_df, test_df)
+        print("Data ready.")
 
     train(
-        max_features= args.max_features,
-        ngram_range= ngram,
-        C = args.C,
+        max_features = args.max_features,
+        ngram_range  = ngram,
+        C            = args.C,
     )
