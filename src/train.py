@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.pipeline import Pipeline
-
+import argparse
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 EXPERIMENT_NAME = "sentimentops-tfidf-logreg"
@@ -116,4 +116,17 @@ def train(
 
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--max_features', type=int, default=50000)
+    parser.add_argument('--ngram_range', type=str, default="1,2")
+    parser.add_argument('--C', type= float, default=1.0)
+    args = parser.parse_args()
+
+    #convert "1,2" string of ngram to tuple
+    ngram = tuple(int(x) for x in args.ngram_range.split(','))
+
+    train(
+        max_features= args.max_features,
+        ngram_range= ngram,
+        C = args.C,
+    )
