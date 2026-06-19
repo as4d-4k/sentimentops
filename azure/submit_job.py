@@ -41,23 +41,30 @@ def submit_training_job(
     client = get_ml_client()
     print(f"Connected to: {client.workspace_name}")
 
+
+    # proper environment with modern base image + pinned dependencies
+    env = Environment(
+    name       = "sentimentops-env-v5",
+    image      = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest",
+    conda_file = "azure/conda_env.yml",
+)
+
     train_command = (
-        "pip install datasets mlflow python-dotenv joblib huggingface-hub && "
-        "python -m src.train "
-        f"--max_features {max_features} "
-        f"--ngram_range {ngram_range} "
-        f"--C {C}"
+    "python src/train.py "
+    f"--max_features {max_features} "
+    f"--ngram_range {ngram_range} "
+    f"--C {C}"
 )
     #3: Defining the Job
     job = command(
-        code= ".",
-        command=train_command,
-        environment= "AzureML-sklearn-1.0-ubuntu20.04-py38-cpu@latest",
-        compute= 'cpu-cluster',
-        display_name='sentimentops-training',
-        description= "TF-IDF + LogReg sentiment training job",
-        experiment_name='sentimentops-tfidf-logreg',
-    )
+        code            = ".",
+        command         = train_command,
+        environment     = env,
+        compute         = "cpu-cluster",
+        display_name    = "sentimentops-training",
+        description     = "TF-IDF + LogReg sentiment training job",
+        experiment_name = "sentimentops-tfidf-logreg",
+)
 
     #4: Submit the job
     print("Submitting Job...")

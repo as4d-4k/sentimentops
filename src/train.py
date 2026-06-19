@@ -1,4 +1,8 @@
 import os
+import sys
+
+# ensure src/ is on the path whether running locally or on Azure
+sys.path.insert(0, os.path.dirname(__file__))
 import joblib
 import mlflow
 import mlflow.sklearn
@@ -104,13 +108,23 @@ def train(
         # ── 6. Log Metrics to MLflow ──────────────────────────────────
         mlflow.log_metric("accuracy", metrics["accuracy"])
 
-        # ── 7. Log Model to MLflow ────────────────────────────────────
-        mlflow.sklearn.log_model(pipeline,
-                                artifact_path="model",
-                                registered_model_name='sentimentops-tfidf')
+        # ── 7. Log Model to MLflow ────────────────────────────────────────────
+# Azure ML has its own model registry — skip mlflow model logging there
+        is_azure = os.environ.get("AZUREML_RUN_ID") is not None
 
-        # ── 8. Save locally too ───────────────────────────────────────
+        if not is_azure:
+            mlflow.sklearn.log_model(
+                pipeline,
+                artifact_path="model",
+                registered_model_name="sentimentops-tfidf"
+            )
+        else:
+            print("Running on Azure ML — skipping mlflow.log_model (Azure handles this)")
+
+        # ── 8. Save locally ───────────────────────────────────────────────────
         save_model(pipeline)
+
+        
 
         print(f"\nMLflow run logged under experiment: {EXPERIMENT_NAME}")
 
@@ -128,7 +142,7 @@ if __name__ == "__main__":
     # ── So we generate it fresh from HuggingFace ──────────────────────
     if not os.path.exists("data/train.csv"):
         print("data/train.csv not found — downloading from HuggingFace...")
-        from src.preprocess import load_imdb, preprocess, save_data
+        from preprocess import load_imdb, preprocess, save_data
         os.makedirs("data", exist_ok=True)
         train_df, test_df = load_imdb()
         train_df = preprocess(train_df)
