@@ -106,7 +106,7 @@ def train(
 
         # ── 7. Log Model to MLflow ────────────────────────────────────
         mlflow.sklearn.log_model(pipeline,
-                                name="model",
+                                artifact_path="model",
                                 registered_model_name='sentimentops-tfidf')
 
         # ── 8. Save locally too ───────────────────────────────────────

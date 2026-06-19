@@ -43,7 +43,7 @@ def submit_training_job(
 
     train_command = (
         "pip install datasets mlflow python-dotenv joblib huggingface-hub && "
-        "python src.train "
+        "python -m src.train "
         f"--max_features {max_features} "
         f"--ngram_range {ngram_range} "
         f"--C {C}"
