@@ -42,11 +42,11 @@ def submit_training_job(
     print(f"Connected to: {client.workspace_name}")
 
     train_command = (
-    "pip install datasets mlflow python-dotenv joblib huggingface-hub && "
-    "python src/train.py "
-    f"--max_features {max_features} "
-    f"--ngram_range {ngram_range} "
-    f"--C {C}"
+        "pip install datasets mlflow python-dotenv joblib huggingface-hub && "
+        "python src.train "
+        f"--max_features {max_features} "
+        f"--ngram_range {ngram_range} "
+        f"--C {C}"
 )
     #3: Defining the Job
     job = command(
