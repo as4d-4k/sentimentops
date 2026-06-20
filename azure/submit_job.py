@@ -76,4 +76,16 @@ def submit_training_job(
     print(f"Studio URL: {returned_job.studio_url}")
 
 if __name__ == "__main__":
-    submit_training_job()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Submit SentimentOps training job to Azure ML")
+    parser.add_argument("--max_features", type=int,   default=50000,  help="TF-IDF vocabulary size")
+    parser.add_argument("--ngram_range",  type=str,   default="1,2",  help="TF-IDF ngram range e.g. 1,2")
+    parser.add_argument("--C",            type=float, default=1.0,    help="Logistic Regression regularization")
+    args = parser.parse_args()
+
+    submit_training_job(
+        max_features = args.max_features,
+        ngram_range  = args.ngram_range,
+        C            = args.C,
+    )
