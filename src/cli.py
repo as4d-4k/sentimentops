@@ -1,5 +1,7 @@
 import os, sys, click, joblib
+# at the top of cli.py — update imports
 sys.path.insert(0, os.path.dirname(__file__))
+from predict import load_model, predict_sentiment, predict_batch
 from preprocess import clean_text, load_imdb, preprocess, save_data
 from train import build_pipeline, evaluate, save_model, train, TRAIN_PATH, TEST_PATH
 
@@ -76,38 +78,91 @@ def train_model(max_features, ngram_range, c, track):
 
 @cli.command()
 @click.argument("text")
-@click.option("--model-path", default="data/model.joblib", show_default=True, help="Path to model file")
-def predict(text, model_path):
-    """
-    Predict sentiment of a movie review.
+@click.option("--model-path", default="data/model.joblib", show_default=True)
+@click.option("--source", type=click.Choice(["local", "azure"]), default="local")
+def predict(text, model_path, source):
+    """Predict sentiment of a movie review."""
 
-    TEXT is the review to classify.
+    # source flag overrides model-path only if explicitly different from default
+    paths = {
+        "local" : "data/model.joblib",
+        "azure" : "data/azure_outputs/model.joblib",
+    }
 
-    Example:
+    # if user passed --model-path explicitly, use that
+    # otherwise use the source-based path
+    final_path = model_path if model_path != "data/model.joblib" else paths[source]
 
-        sentimentops predict "This movie was fantastic"
-    """
-    if not os.path.exists(model_path):
-        click.secho(f"Model not found at {model_path}. Run: sentimentops train first.", fg="red")
+    if not os.path.exists(final_path):
+        click.secho(
+            f"Model not found at '{final_path}'. "
+            f"Run 'sentimentops train-model' first.",
+            fg="red"
+        )
         sys.exit(1)
 
-    pipeline = joblib.load(model_path)
-    cleaned  = clean_text(text)
+    try:
+        pipeline = load_model(final_path)
+        result   = predict_sentiment(text, pipeline)
+    except FileNotFoundError as e:
+        click.secho(str(e), fg="red")
+        sys.exit(1)
+    except ValueError as e:
+        click.secho(str(e), fg="red")
+        sys.exit(1)
 
-    prediction    = pipeline.predict([cleaned])[0]
-    probabilities = pipeline.predict_proba([cleaned])[0]
-    confidence    = float(probabilities[prediction])
-    sentiment     = "positive" if prediction == 1 else "negative"
+    color = "green" if result["sentiment"] == "positive" else "red"
 
-    # color code the output
-    color = "green" if sentiment == "positive" else "red"
-
-    click.echo(f"\nInput     : {text[:80]}...")
-    click.secho(f"Sentiment : {sentiment.upper()}", fg=color, bold=True)
-    click.echo(f"Confidence: {confidence:.2%}")
+    click.echo(f"\nModel       : {source.upper()}")
+    click.echo(f"Input       : {text[:80]}...")
+    click.secho(f"Sentiment   : {result['sentiment'].upper()}", fg=color, bold=True)
+    click.echo(f"Confidence  : {result['confidence']:.2%}")
 
 
-#Command 4: evaluate
+#Command 4: batch evaluate
+@cli.command()
+@click.option("--model-path", default="data/model.joblib", show_default=True)
+@click.option("--source", type=click.Choice(["local", "azure"]), default="local")
+def batch_predict(model_path, source):
+    """
+    Predict sentiment for multiple reviews from stdin.
+
+    Usage:
+
+        echo "great movie\\nterrible film" | sentimentops batch-predict
+    """
+    paths = {
+        "local" : "data/model.joblib",
+        "azure" : "data/azure_outputs/model.joblib",
+    }
+
+    path = paths[source] if source else model_path
+
+    try:
+        pipeline = load_model(path)
+    except FileNotFoundError as e:
+        click.secho(str(e), fg="red")
+        sys.exit(1)
+
+    texts = [line.strip() for line in sys.stdin if line.strip()]
+
+    if not texts:
+        click.secho("No input provided via stdin.", fg="red")
+        sys.exit(1)
+
+    results = predict_batch(texts, pipeline)
+
+    click.echo(f"\nBatch results ({len(results)} reviews):\n")
+    for i, (text, result) in enumerate(zip(texts, results), 1):
+        color = "green" if result["sentiment"] == "positive" else "red"
+        click.echo(f"{i}. {text[:50]}...")
+        click.secho(
+            f"   → {result['sentiment'].upper()} ({result['confidence']:.2%})",
+            fg=color
+        )
+
+
+#Command 5: evaluate
 @cli.command()
 @click.option("--model-path", default="data/model.joblib", show_default=True, help="Path to model file")
 @click.option("--test-path",  default="data/test.csv",     show_default=True, help="Path to test CSV")
