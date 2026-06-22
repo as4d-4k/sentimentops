@@ -1,5 +1,4 @@
 import re, pandas as pd, os
-from datasets import load_dataset
 from dotenv import load_dotenv
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
@@ -25,6 +24,7 @@ def load_imdb():
     Load IMDB dataset from HuggingFace and return
     train and test as pandas DF
     """
+    from datasets import load_dataset
     dataset = load_dataset("stanfordnlp/imdb", token=HF_TOKEN)
     train_df = pd.DataFrame(dataset["train"])
     test_df = pd.DataFrame(dataset['test'])

@@ -1,0 +1,34 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+.eggs/
+
+# Data — too large to bundle
+data/train.csv
+data/test.csv
+data/azure_outputs/
+
+# Azure and secrets
+.env
+.azureml/
+azure/
+
+# MLflow runs
+mlruns/
+
+# Notebooks
+notebooks/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+
+# Docs
+README.md
