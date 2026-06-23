@@ -94,20 +94,20 @@ def predict_batch(texts: list[str], pipeline) -> list[dict]:
 
 
 # ____DistilBERT_____________________________________________
-def load_distilbert(model_path: str = "data/distilbert_model"):
-    """Load fine-tuned DistilBERT model and tokenizer."""
+def load_distilbert(model_path: str = "asadullahrehmann/imdb-distilbert-sentimentops"):
+    """
+    Load DistilBERT from either:
+    - local path:      "data/distilbert_model"
+    - HuggingFace Hub: "asadullahrehmann/imdb-distilbert-sentimentops"
+    """
     from transformers import (
         DistilBertTokenizerFast,
         DistilBertForSequenceClassification,
     )
-    import torch
+    
 
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(
-            f"DistilBERT model not found at '{model_path}'. "
-            f"Run 'python src/train_bert.py' first."
-        )
-
+    # works for both local path and HuggingFace Hub ID
+    print(f"Loading DistilBERT from: {model_path}")
     tokenizer = DistilBertTokenizerFast.from_pretrained(model_path)
     model     = DistilBertForSequenceClassification.from_pretrained(model_path)
     model.eval()
