@@ -41,6 +41,17 @@ cluster = AmlCompute(
     idle_time_before_scale_down= 180,
 )
 
+print("Creating GPU CLUSTER...")
+gpu_cluster = AmlCompute(
+    name          = "gpu-cluster",
+    type          = "amlcompute",
+    size          = "STANDARD_NV12S_V3",  
+    min_instances = 0,
+    max_instances = 1,
+    idle_time_before_scale_down = 120,
+)
+
+
 ml_client = MLClient(
     credential= credential,
     subscription_id= os.environ['SUBSCRIPTION_ID'],
@@ -50,6 +61,8 @@ ml_client = MLClient(
 
 ml_client.compute.begin_create_or_update(cluster).result()
 print("compute cluster created: cpu-cluster")
+ml_client.compute.begin_create_or_update(gpu_cluster).result()
+print("GPU cluster created: gpu-cluster")
 print("ALL DONE!")
 
 
