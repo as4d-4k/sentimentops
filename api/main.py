@@ -4,6 +4,8 @@ import joblib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, field_validator
+from dotenv import load_dotenv
+load_dotenv()
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict import load_model, predict_sentiment, predict_batch
@@ -54,23 +56,39 @@ class HealthResponse(BaseModel):
 
 # ── App State ─────────────────────────────────────────────────────────────────
 
-MODEL_PATH    = os.getenv("MODEL_PATH",    "data/model.joblib")
-MODEL_VERSION = os.getenv("MODEL_VERSION", "tfidf-logreg-v1")
+MODEL_PATH       = os.getenv("MODEL_PATH",       "data/model.joblib")
+DISTILBERT_PATH  = os.getenv("DISTILBERT_PATH",  "data/distilbert_model")
+MODEL_VERSION    = os.getenv("MODEL_VERSION",    "tfidf-logreg-v1")
+BERT_VERSION     = os.getenv("BERT_VERSION",     "distilbert-v1")
 
-pipeline = None
+pipeline              = None   # sklearn model
+distilbert_model      = None   # distilbert model
+distilbert_tokenizer  = None   # distilbert tokenizer
 
-
-# ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global pipeline
-    print(f"Loading model from {MODEL_PATH}...")
-    pipeline = load_model(MODEL_PATH)      # ← now uses predict.py
-    print("Model loaded successfully.")
-    yield
-    pipeline = None
+    global pipeline, distilbert_model, distilbert_tokenizer
 
+    # ── Load sklearn model ────────────────────────────────────────────
+    print(f"Loading sklearn model from {MODEL_PATH}...")
+    pipeline = load_model(MODEL_PATH)
+    print("Sklearn model loaded.")
+
+    # ── Load DistilBERT (optional — skip if not found) ────────────────
+    try:
+        from predict import load_distilbert
+        print(f"Loading DistilBERT from {DISTILBERT_PATH}...")
+        distilbert_model, distilbert_tokenizer = load_distilbert(DISTILBERT_PATH)
+        print("DistilBERT loaded.")
+    except FileNotFoundError:
+        print(f"DistilBERT not found at {DISTILBERT_PATH} — skipping.")
+        print("Set DISTILBERT_PATH env var to load it.")
+
+    yield
+    pipeline             = None
+    distilbert_model     = None
+    distilbert_tokenizer = None
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -111,6 +129,68 @@ def predict(request: PredictRequest):
     )
 
 
+@app.post("/predict/distilbert", response_model=PredictResponse)
+def predict_distilbert_endpoint(request: PredictRequest):
+    """
+    Predict sentiment using fine-tuned DistilBERT.
+    More accurate than /predict but slower (~50ms vs ~1ms).
+    Requires DistilBERT model to be loaded at startup.
+    """
+    if distilbert_model is None or distilbert_tokenizer is None:
+        raise HTTPException(
+            status_code = 503,
+            detail      = (
+                "DistilBERT model not loaded. "
+                "Set DISTILBERT_PATH env var and restart the server."
+            )
+        )
+
+    try:
+        from predict import predict_distilbert
+        result = predict_distilbert(request.text, distilbert_model, distilbert_tokenizer)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return PredictResponse(
+        sentiment     = result["sentiment"],
+        confidence    = result["confidence"],
+        model_version = BERT_VERSION,
+    )
+
+
+@app.post("/predict/compare", response_model=dict)
+def predict_compare(request: PredictRequest):
+    """
+    Run the same review through both models and compare results.
+    Useful for seeing the difference between TF-IDF and DistilBERT.
+    """
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail="Sklearn model not loaded")
+
+    # sklearn prediction
+    sklearn_result = predict_sentiment(request.text, pipeline)
+
+    # distilbert prediction (if available)
+    bert_result = None
+    if distilbert_model is not None:
+        from predict import predict_distilbert
+        bert_result = predict_distilbert(request.text, distilbert_model, distilbert_tokenizer)
+
+    return {
+        "text"       : request.text[:100],
+        "sklearn"    : {
+            "sentiment"  : sklearn_result["sentiment"],
+            "confidence" : sklearn_result["confidence"],
+            "model"      : "tfidf-logreg-v1",
+        },
+        "distilbert" : {
+            "sentiment"  : bert_result["sentiment"]   if bert_result else None,
+            "confidence" : bert_result["confidence"]  if bert_result else None,
+            "model"      : BERT_VERSION               if bert_result else None,
+        } if bert_result else "not loaded",
+    }
+
+
 @app.post("/predict/batch", response_model=BatchPredictResponse)
 def predict_batch_endpoint(request: BatchPredictRequest):
     """
@@ -142,10 +222,14 @@ def predict_batch_endpoint(request: BatchPredictRequest):
 @app.get("/")
 def root():
     return {
-        "name"    : "SentimentOps API",
-        "version" : "1.0.0",
-        "docs"    : "/docs",
-        "health"  : "/health",
-        "predict" : "/predict",
-        "batch"   : "/predict/batch",
+        "name"             : "SentimentOps API",
+        "version"          : "1.0.0",
+        "docs"             : "/docs",
+        "health"           : "/health",
+        "endpoints"        : {
+            "sklearn"      : "POST /predict",
+            "distilbert"   : "POST /predict/distilbert",
+            "batch"        : "POST /predict/batch",
+            "compare"      : "POST /predict/compare",
+        }
     }
