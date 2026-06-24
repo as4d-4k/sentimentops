@@ -745,8 +745,22 @@ rmdir /s /q tests\__pycache__
 ```
 
 ---
-
 ## 10. PowerShell API Testing
+# deployment commands
+az acr create --resource-group mlops-rg --name sentimentopsacr --sku Basic
+az acr login --name sentimentopsacr
+az acr update --name sentimentopsacr --admin-enabled true
+az containerapp env create --name sentimentops-env --resource-group mlops-rg --location uaenorth
+az containerapp create --name sentimentops-api ...
+
+# get live URL
+az containerapp show --name sentimentops-api --resource-group mlops-rg --query properties.configuration.ingress.fqdn --output tsv
+
+# teardown
+az containerapp delete --name sentimentops-api --resource-group mlops-rg --yes
+az acr delete --name sentimentopsacr --resource-group mlops-rg --yes
+
+## 11. PowerShell API Testing
 
 > Use these instead of curl — curl doesn't work properly in PowerShell.
 
