@@ -745,7 +745,7 @@ rmdir /s /q tests\__pycache__
 ```
 
 ---
-## 10. PowerShell API Testing
+## 10. Azure Container app
 # deployment commands
 az acr create --resource-group mlops-rg --name sentimentopsacr --sku Basic
 az acr login --name sentimentopsacr
