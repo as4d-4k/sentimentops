@@ -43,7 +43,7 @@ curl -X POST https://sentimentops-api.thankfulmeadow-07d26880.uaenorth.azurecont
 | Model | Accuracy | Inference | Training |
 |---|---|---|---|
 | TF-IDF + Logistic Regression | 90.0% | ~1ms | 2 min (CPU) |
-| DistilBERT (fine-tuned) | 94.2% | ~50ms | 15 min (T4 GPU) |
+| DistilBERT (fine-tuned) | 97.2% | ~50ms | 50+ min (T4 GPU) |
 
 The difference becomes clear on ambiguous reviews:
 
@@ -273,7 +273,7 @@ logging approach without manual configuration.
 ## Author
 
 **Asad Ullah**
-Junior AI Engineer | CS Student at Forman Christian College
+AI/ML Engineer | CS Student at Forman Christian College
 
 - GitHub: https://github.com/as4d-4k
 - Portfolio: https://portfolio-steel-nine-aur.vercel.app
