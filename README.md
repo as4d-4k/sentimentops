@@ -73,7 +73,7 @@ Preprocessing (src/preprocess.py)
     │                               │
 Stage 1: TF-IDF + LogReg     Stage 2: DistilBERT
 sklearn Pipeline             PyTorch fine-tuning
-90% accuracy                 94.2% accuracy
+90% accuracy                 97.2% accuracy
     │                               │
     └───────────────┬───────────────┘
                     ↓
